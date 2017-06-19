@@ -49,11 +49,44 @@ public class ImageNormalizerIJ2PluginTest {
 
     @Test
     public <T extends RealType<T>> void testIJ2Normalisation() {
+        // create random image
+        ImagePlus testImage = NewImage.createShortImage("test", 1000,1000,1, NewImage.FILL_RANDOM);
 
+        Img<T> img = ImageJFunctions.wrapReal(testImage);
+
+        // normalize it
+        long timeStamp = System.currentTimeMillis();
+        Img<FloatType> normalisedImg = ImageNormalizerIJ2Plugin.normalize(img);
+        System.out.println("Normalisation took " + (System.currentTimeMillis() - timeStamp) + " msec");
+        ImagePlus resultImage = ImageJFunctions.wrap(normalisedImg, "result");
+
+        // check if normalisation has reasonable result statistics
+        ImageStatistics statsBeforeTest = testImage.getStatistics();
+        ImageStatistics statsAfterTest = resultImage.getStatistics();
+
+        assertEquals(0.0, statsAfterTest.min, tolerance);
+        assertEquals(1.0, statsAfterTest.max, tolerance);
+        assertEquals((statsBeforeTest.mean - statsBeforeTest.min) / (statsBeforeTest.max - statsBeforeTest.min),
+                statsAfterTest.mean, tolerance);
     }
 
     @Test
     public void testIfDimensionsMatch() {
 
+        new net.imagej.ImageJ();
+
+        ImagePlus testImage = IJ.openImage("src/main/resources/mitosis.tif");
+        testImage.show();
+
+        // normalize it
+        long timeStamp = System.currentTimeMillis();
+        IJ.run(testImage, "Normalisation (IJ2)", "");
+        ImagePlus resultImage = IJ.getImage();
+        System.out.println("Normalisation took " + (System.currentTimeMillis() - timeStamp) + " msec");
+
+        // check result image dimensions
+        assertEquals(testImage.getNSlices(), resultImage.getNSlices());
+        assertEquals(testImage.getNChannels(), resultImage.getNChannels());
+        assertEquals(testImage.getNFrames(), resultImage.getNFrames());
     }
 }

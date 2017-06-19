@@ -46,7 +46,10 @@ public class ImagesMain {
 
     public static <T extends RealType<T>> void main(String... args) {
 
-        new ij.ImageJ();
+        // now we run ImageJ2 instead of IJ1
+        ImageJ ij = new net.imagej.ImageJ();
+        ij.ui().showUI();
+
 
         ImagePlus testImage = IJ.openImage("src/main/resources/mitosis.tif");
         testImage.show();
@@ -58,5 +61,22 @@ public class ImagesMain {
         ImagePlus resultImage = ImageNormalizerPlugin.normalize(testImage);
         resultImage.setTitle("Result using IJ1");
         resultImage.show();
+
+        // run the new plugin in the old fashioned way
+        IJ.run(testImage, "Normalisation (IJ2)", "");
+        ImagePlus resultImageIJ2 = IJ.getImage();
+        resultImageIJ2.setTitle("Result using IJ.run and IJ2 plugin");
+
+        // this is a bridge to imagej2
+        Img<T> testImg = ImageJFunctions.wrapReal(testImage);
+
+        // this is the cool new imagej2
+        ij.ui().show(testImg);
+        ij.command().run(ImageNormalizerIJ2Plugin.class, false, new Object[]{"input", testImg, "ij", ij});
+
+        ImagePlus resultImagePureIJ2 = IJ.getImage();
+        resultImagePureIJ2.setTitle("Result using pure IJ2");
+
+
     }
 }
