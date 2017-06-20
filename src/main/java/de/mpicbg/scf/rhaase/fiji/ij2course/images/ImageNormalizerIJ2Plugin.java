@@ -1,14 +1,13 @@
 package de.mpicbg.scf.rhaase.fiji.ij2course.images;
 
-import net.imagej.ImageJ;
 import net.imglib2.Cursor;
 import net.imglib2.algorithm.stats.ComputeMinMax;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
+import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -50,15 +49,12 @@ public class ImageNormalizerIJ2Plugin implements Command {
     @Parameter
     Img input;
 
-    @Parameter
-    ImageJ ij;
+    @Parameter(type = ItemIO.OUTPUT)
+    Img output;
 
     @Override
     public void run() {
-        Img<FloatType> output = normalize(input);
-        //ij.ui().show(output); //does not work as intended
-
-        ImageJFunctions.show(output); // works better
+        output = normalize(input);
     }
 
     static <T extends RealType<T>> Img<FloatType> normalize(Img<T> input) {
