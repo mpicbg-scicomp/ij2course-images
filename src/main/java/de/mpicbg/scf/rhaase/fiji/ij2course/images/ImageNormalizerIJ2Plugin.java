@@ -56,7 +56,7 @@ public class ImageNormalizerIJ2Plugin implements Command {
     @Override
     public void run() {
         Img<FloatType> output = normalize(input);
-        ij.ui().show(output); //does not work as intended
+        //ij.ui().show(output); //does not work as intended
 
         ImageJFunctions.show(output); // works better
     }
