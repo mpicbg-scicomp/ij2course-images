@@ -1,17 +1,20 @@
 package de.mpicbg.scf.rhaase.fiji.ij2course.images;
 
-import ij.IJ;
-import net.imagej.ImageJ;
-import ij.ImagePlus;
-import ij.gui.NewImage;
-import ij.process.ImageStatistics;
-import net.imglib2.img.Img;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.real.FloatType;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
-import static org.junit.Assert.*;
+import java.io.IOException;
+import java.util.Random;
+
+import net.imagej.Dataset;
+import net.imagej.ImageJ;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Pair;
+
+import org.junit.Test;
 
 /**
  * Author: Robert Haase, Scientific Computing Facility, MPI-CBG Dresden,
@@ -49,44 +52,53 @@ public class ImageNormalizerIJ2PluginTest {
 
     @Test
     public <T extends RealType<T>> void testIJ2Normalisation() {
-        // create random image
-        ImagePlus testImage = NewImage.createShortImage("test", 1000,1000,1, NewImage.FILL_RANDOM);
+        ImageJ ij = new ImageJ();
 
-        Img<T> img = ImageJFunctions.wrapReal(testImage);
+        // create random image
+        final Random r = new Random();
+        Img<UnsignedByteType> testImage = ArrayImgs.unsignedBytes(1000, 1000);
+        for (UnsignedByteType sample : testImage) {
+            sample.setInteger(r.nextInt(256));
+        }
 
         // normalize it
         long timeStamp = System.currentTimeMillis();
-        Img<FloatType> normalisedImg = ImageNormalizerIJ2Plugin.normalize(img);
+        Img<FloatType> resultImage = ImageNormalizerIJ2Plugin.normalize(testImage);
         System.out.println("Normalisation took " + (System.currentTimeMillis() - timeStamp) + " msec");
-        ImagePlus resultImage = ImageJFunctions.wrap(normalisedImg, "result");
 
         // check if normalisation has reasonable result statistics
-        ImageStatistics statsBeforeTest = testImage.getStatistics();
-        ImageStatistics statsAfterTest = resultImage.getStatistics();
+        Pair<UnsignedByteType, UnsignedByteType> minMaxBefore = //
+            ij.op().stats().minMax(testImage);
+        Pair<FloatType, FloatType> minMaxAfter = //
+            ij.op().stats().minMax(resultImage);
+        double minBefore = minMaxBefore.getA().getRealDouble();
+        double maxBefore = minMaxBefore.getB().getRealDouble();
+        double minAfter = minMaxAfter.getA().getRealDouble();
+        double maxAfter = minMaxAfter.getB().getRealDouble();
+        double meanBefore = ij.op().stats().mean(testImage).getRealDouble();
+        double meanAfter = ij.op().stats().mean(resultImage).getRealDouble();
 
-        assertEquals(0.0, statsAfterTest.min, tolerance);
-        assertEquals(1.0, statsAfterTest.max, tolerance);
-        assertEquals((statsBeforeTest.mean - statsBeforeTest.min) / (statsBeforeTest.max - statsBeforeTest.min),
-                statsAfterTest.mean, tolerance);
+        assertEquals(0.0, minAfter, tolerance);
+        assertEquals(1.0, maxAfter, tolerance);
+        assertEquals((meanBefore - minBefore) / (maxBefore - minBefore),
+                meanAfter, tolerance);
+
+        ij.context().dispose();
     }
 
     @Test
-    public void testIfDimensionsMatch() {
-
-        new net.imagej.ImageJ();
-
-        ImagePlus testImage = IJ.openImage("src/main/resources/mitosis.tif");
-        testImage.show();
-
+    public void testIfDimensionsMatch() throws IOException {
+        ImageJ ij = new ImageJ();
+        Dataset testImage = ij.scifio().datasetIO().open("src/main/resources/mitosis.tif");
         // normalize it
         long timeStamp = System.currentTimeMillis();
-        IJ.run(testImage, "Normalisation (IJ2)", "");
-        ImagePlus resultImage = IJ.getImage();
+        Img<FloatType> resultImage = ImageNormalizerIJ2Plugin.normalize((Img) testImage);
         System.out.println("Normalisation took " + (System.currentTimeMillis() - timeStamp) + " msec");
 
         // check result image dimensions
-        assertEquals(testImage.getNSlices(), resultImage.getNSlices());
-        assertEquals(testImage.getNChannels(), resultImage.getNChannels());
-        assertEquals(testImage.getNFrames(), resultImage.getNFrames());
+        for (int d = 0; d < testImage.numDimensions(); d++) {
+            assertEquals(testImage.dimension(d), resultImage.dimension(d));
+        }
+        ij.context().dispose();
     }
 }
